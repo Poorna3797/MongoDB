@@ -1,0 +1,215 @@
+import pymongo
+import json
+from pymongo import MongoClient
+
+
+# Making Connection
+myclient = MongoClient("mongodb://localhost:27017/")
+mydb = myclient.Task
+collection = mydb.student
+
+# Inserting json file
+file = open('students.json', 'r')
+    
+for i in file:    
+    x = json.loads(i)
+    collection.insert_one(x)
+
+
+
+# 1. Find the student name who scored maximum scores in all (exam, quiz and homework)?
+from print import print
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$group':{'_id': '$scores.type','Maximum_Score':{'$max':'$scores.score'}}}
+
+
+a = collection.aggregate([q1,q2])
+
+for i in a:
+    x = collection.aggregate([
+        {'$unwind':'$scores'}, # decontructing a array field -scores
+        {'$match' : {'$and' : [{'scores.type': i['_id']},{'scores.score' : i['Maximum_Score']}]}},
+        {'$project': {'_id':0}}])
+    print(list(x))
+
+
+
+#2. Find students who scored below average in the exam and pass mark is 40%?
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match':{'scores.type':'exam'}}
+
+q3 = {'$group':{'_id':'$scores.type', 'Average':{'$avg':'$scores.score'}}}
+
+q4 = {'$project':{'_id':0,'name':1}}
+
+    
+average = collection.aggregate([q1,q2,q3])
+
+average = list(average)[0]['Average']
+average
+y = collection.aggregate([{'$unwind':'$scores'},
+                        {'$match': {'$and': [{'scores.type':'exam'},{'scores.score':{'$gte':40,'$lt': average}}]}},
+                        {'$project' : {'name':1,'scores.type':1 }} ])
+list(y)
+
+#3. Find students who scored below pass mark and assigned them as fail, and above pass mark as pass in all the categories
+Student who scored below 40%
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'exam'}, {'scores.score':{'$lt':40} } ] } }
+
+examfailed = collection.aggregate([q1,q2])
+
+exam_failed = list(examfailed)
+
+
+for i in exam_failed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'exam':'Fail'}}})
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'quiz'}, {'scores.score':{'$lt':40} } ] } }
+
+quizfailed = collection.aggregate([q1,q2])
+
+quiz_failed = list(quizfailed)
+
+
+
+for i in quiz_failed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'quiz':'Fail'}}})
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'homework'}, {'scores.score':{'$lt':40} } ] } }
+
+hwfailed = collection.aggregate([q1,q2])
+
+hw_failed = list(hwfailed)
+
+
+
+for i in hw_failed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'homework':'Fail'}}})
+students who passed in each category
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'exam'}, {'scores.score':{'$gt':40} } ] } }
+
+exampassed = collection.aggregate([q1,q2])
+
+exam_passed = list(exampassed)
+
+
+
+for i in exam_passed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'exam':'pass'}}})
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'quiz'}, {'scores.score':{'$gt':40} } ] } }
+
+quizpassed = collection.aggregate([q1,q2])
+
+quiz_passed = list(quizpassed)
+
+
+
+
+for i in quiz_passed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'quiz':'Pass'}}})
+
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'$and': [ {'scores.type':'homework'}, {'scores.score':{'$gt':40} } ] } }
+
+hwpassed = collection.aggregate([q1,q2])
+
+hw_passed = list(hwpassed)
+
+hw_passed
+
+
+for i in hw_passed:
+    collection.update_one({'_id':i['_id']},
+                    {'$push': {'Suject_Results' : {'homework':'Pass'}}})
+
+#4. Find the total and average of the exam, quiz and homework and store them in a separate collection
+q1 = {'$unwind': '$scores'}
+
+q2 = {'$group': {'_id':'$name', 'total_marks': {'$sum': '$scores.score'} ,'avg_of_all' : {'$avg': '$scores.score'}}}
+
+q3 = {'$sort': {'_id':1} }
+
+
+allaverage = collection.aggregate([q1,q2,q3])
+list(allavege)
+
+#5) Create a new collection which consists of students who scored below average and above 40% in all the categories.
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$group':{'_id':'$scores.type', 'Average':{'$avg':'$scores.score'}}}
+
+q4 = {'$project':{'_id':0,'name':1}}
+    
+exam = collection.aggregate([q1,q2])
+
+average = list(exam)
+average
+quiz_avg = average[0]['Average']
+exam_avg = average[1]['Average']
+homework_avg = average[2]['Average']
+
+print(quiz_avg,exam_avg,homework_avg)
+# new collection
+for i in average:
+    y =   collection.aggregate([{'$unwind':'$scores'},
+                        {'$match': {'$and': [{'scores.type':i['_id']},{'scores.score':{'$gt':40 ,'$lt': i['Average']}}]}},
+                         {'$project':{'_id':0}}#,
+                        #{'$out':'Avg_of_all_exam_type'}
+                           ])
+    print(list(y))
+    
+    
+
+#6. Create a new collection which consists of students who scored below the fail mark in all the categories
+q1 = {'$unwind':'$scores'}
+
+q2 = {'$match': {'scores.score':{'$lt':40}}}
+
+for i in collection.aggregate([q1,q2]):
+    print(i)
+    
+all_fail = collection.aggregate([q1,q2])
+
+allfail = list(all_fail)
+
+allfail
+
+#7. Create a new collection which consists of students who scored above pass mark in all the categories
+all_pass = collection.aggregate([
+                    {'$unwind': '$scores'},
+                    {'$match' :{'scores.score':{'$gte': 40}}},
+                    {'$group' :{'_id':{'_id':'$_id','name':'$name'},'count':{'$sum':1}}},
+])
+
+allpass = list(all_pass)
+
+# Creating a collection
+allpassed = db['std_allpass']
+
+for i in ids_std_pass_list:
+    if i['count'] == 3:
+        firstpair = i['_id']
+        id1 = firstpair['_id']
+        name = firstpair['name']
+        allpassed.insert_one({'_id':id1,'name':name})
