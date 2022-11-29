@@ -1,0 +1,74 @@
+!pip install dnspython
+!pip install pymongo[srv]
+
+import pymongo
+from pymongo import MongoClient
+
+myclient= MongoClient("mongodb://localhost:27017/")
+mydb = client.Mongodb_Task
+myinfo = mydb.Telephone_Directory
+
+# insert_one
+a = { "Name":"Tony", "Number": 8870617867, "Place": "Mumbai" }
+x = myinfo.insert_one(a)
+
+
+
+#Insert_many
+tele_directory  = [
+    
+           {"Name":"Poorna", "Number": 9894357623, "Place": "Coimbatore"},
+           {"Name":"Loki", "Number": 9791645783, "Place": "Coimbatore"},
+           {"Name": "Mithun", "Number": 8006006574, "Place": "Chennai"},
+           {"Name":"Maya", "Number": 8886978543, "Place": "Erode"},
+           {"Name":"Saranya", "Number": 7776548899, "Place": "Bangalore"}
+	     {"Name":"Ashi", "Number": 8765432190, "Place": "Pune"}
+    
+]
+
+x1 = myinfo.insert_many(tele_directory)
+
+
+# Retriving database
+for i in myinfo.find({},{'_id': False}):
+    print(i)
+
+
+# Retriving data
+for i in myinfo.find({'Name': 'Poorna' },{'_id': False}):
+    print(i)
+
+
+# Retrive using multiple condition
+q = {'$or':[{'Place':'Bangalore'},{'Place':'Chennai'}]}
+
+for i in myinfo.find(q,{'_id':False}):
+    print(i)
+
+
+# update_one
+
+q = {'Name':'Mithun','Name': 'Maya'}
+
+new = {'$set':{'Name':'Dhams','Name': 'Psycho'}}
+
+myinfo.update_one(q,new)
+
+for i in record.find({},{'_id':False}):
+    print(i)
+
+
+#Delete_one
+q = {'Place': 'Pune'}
+
+myinfo.delete_one(q)
+for i in record.find({},{'_id':False}):
+    print(i)
+
+
+# Delete_many
+q = {'Name':{'$regex':'^M'}}
+myinfo.delete_many(q)
+
+for i in myinfo.find({},{'_id': False}):
+    print(i)
